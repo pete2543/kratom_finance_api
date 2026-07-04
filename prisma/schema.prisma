@@ -1,0 +1,268 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["kratom_finance_db"]
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  name         String?
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  accounts     Account[]
+  categories   Category[]
+
+  @@map("users")
+  @@schema("kratom_finance_db")
+}
+
+model Account {
+  id           String        @id @default(cuid())
+  name         String
+  type         AccountType   @default(CASH)
+  balance      Decimal       @default(0) @db.Decimal(18, 2)
+  currency     String        @default("THB")
+  userId       String        @map("user_id")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
+  @@map("accounts")
+  @@schema("kratom_finance_db")
+}
+
+model Category {
+  id           String        @id @default(cuid())
+  name         String
+  type         CategoryType
+  icon         String?
+  color        String?
+  userId       String        @map("user_id")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([userId, name, type])
+  @@index([userId])
+  @@map("categories")
+  @@schema("kratom_finance_db")
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  amount      Decimal         @db.Decimal(18, 2)
+  type        TransactionType
+  description String?
+  date        DateTime        @default(now())
+  accountId   String          @map("account_id")
+  categoryId  String?         @map("category_id")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  account     Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category    Category?       @relation(fields: [categoryId], references: [id])
+
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([date])
+  @@map("transactions")
+  @@schema("kratom_finance_db")
+}
+
+model customers {
+  id            Int             @id @default(autoincrement())
+  name          String          @db.VarChar(255)
+  phone         String?         @db.VarChar(20)
+  line_user_id  String?         @unique @db.VarChar(100)
+  address       String?
+  credit_limit  Decimal?        @default(0) @db.Decimal(10, 2)
+  created_at    DateTime?       @default(now()) @db.Timestamptz(6)
+  notifications notifications[]
+  orders        orders[]
+
+  @@schema("kratom_finance_db")
+}
+
+model notification_statuses {
+  id            Int             @id @default(autoincrement())
+  code          String          @unique @db.VarChar(10)
+  label_th      String          @db.VarChar(50)
+  notifications notifications[]
+
+  @@schema("kratom_finance_db")
+}
+
+model notification_types {
+  id            Int             @id @default(autoincrement())
+  code          String          @unique @db.VarChar(20)
+  label_th      String          @db.VarChar(50)
+  notifications notifications[]
+
+  @@schema("kratom_finance_db")
+}
+
+model notifications {
+  id                    Int                   @id @default(autoincrement())
+  customer_id           Int
+  order_id              Int?
+  type_id               Int
+  message               String?
+  sent_at               DateTime?             @default(now()) @db.Timestamptz(6)
+  status_id             Int
+  customers             customers             @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  orders                orders?               @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  notification_statuses notification_statuses @relation(fields: [status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  notification_types    notification_types    @relation(fields: [type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([order_id], map: "idx_notifications_order")
+  @@schema("kratom_finance_db")
+}
+
+model order_items {
+  id          Int         @id @default(autoincrement())
+  order_id    Int
+  product_id  Int
+  quantity    Decimal     @db.Decimal(10, 2)
+  unit_price  Decimal     @db.Decimal(10, 2)
+  subtotal    Decimal?    @db.Decimal(10, 2)
+  orders      orders      @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  products_kt products_kt @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([order_id], map: "idx_order_items_order")
+  @@schema("kratom_finance_db")
+}
+
+model orders {
+  id                Int              @id @default(autoincrement())
+  customer_id       Int?
+  sale_type_id      Int
+  order_date        DateTime?        @default(now()) @db.Timestamptz(6)
+  due_date          DateTime?        @db.Date
+  total_amount      Decimal          @default(0) @db.Decimal(10, 2)
+  payment_status_id Int
+  note              String?
+  created_at        DateTime?        @default(now()) @db.Timestamptz(6)
+  notifications     notifications[]
+  order_items       order_items[]
+  customers         customers?       @relation(fields: [customer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payment_statuses  payment_statuses @relation(fields: [payment_status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sale_types        sale_types       @relation(fields: [sale_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payments          payments[]
+
+  @@index([customer_id], map: "idx_orders_customer")
+  @@index([payment_status_id], map: "idx_orders_status")
+  @@schema("kratom_finance_db")
+}
+
+model payment_methods {
+  id       Int        @id @default(autoincrement())
+  code     String     @unique @db.VarChar(20)
+  label_th String     @db.VarChar(50)
+  payments payments[]
+
+  @@schema("kratom_finance_db")
+}
+
+model payment_statuses {
+  id       Int      @id @default(autoincrement())
+  code     String   @unique @db.VarChar(10)
+  label_th String   @db.VarChar(50)
+  orders   orders[]
+
+  @@schema("kratom_finance_db")
+}
+
+model payments {
+  id              Int             @id @default(autoincrement())
+  order_id        Int
+  amount          Decimal         @db.Decimal(10, 2)
+  paid_at         DateTime?       @default(now()) @db.Timestamptz(6)
+  method_id       Int
+  note            String?
+  payment_methods payment_methods @relation(fields: [method_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  orders          orders          @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([order_id], map: "idx_payments_order")
+  @@schema("kratom_finance_db")
+}
+
+model products_kt {
+  id                 Int                  @id @default(autoincrement())
+  name               String               @db.VarChar(255)
+  cost_price         Decimal              @default(0) @db.Decimal(10, 2)
+  selling_price      Decimal              @db.Decimal(10, 2)
+  unit               String?              @default("ขวด") @db.VarChar(20)
+  is_active          Boolean?             @default(true)
+  created_at         DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?            @default(now()) @db.Timestamptz(6)
+  order_items        order_items[]
+  stock_transactions stock_transactions[]
+
+  @@schema("kratom_finance_db")
+}
+
+model sale_types {
+  id       Int      @id @default(autoincrement())
+  code     String   @unique @db.VarChar(10)
+  label_th String   @db.VarChar(50)
+  orders   orders[]
+
+  @@schema("kratom_finance_db")
+}
+
+model stock_transaction_types {
+  id                 Int                  @id @default(autoincrement())
+  code               String               @unique @db.VarChar(10)
+  label_th           String               @db.VarChar(50)
+  stock_transactions stock_transactions[]
+
+  @@schema("kratom_finance_db")
+}
+
+model stock_transactions {
+  id                      Int                     @id @default(autoincrement())
+  product_id              Int
+  type_id                 Int
+  quantity                Decimal                 @db.Decimal(10, 2)
+  reference_type          String?                 @db.VarChar(20)
+  reference_id            Int?
+  note                    String?
+  created_at              DateTime?               @default(now()) @db.Timestamptz(6)
+  products_kt             products_kt             @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  stock_transaction_types stock_transaction_types @relation(fields: [type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([product_id], map: "idx_stock_tx_product")
+  @@schema("kratom_finance_db")
+}
+
+enum AccountType {
+  CASH
+  BANK
+  CREDIT_CARD
+  E_WALLET
+  OTHER
+
+  @@schema("kratom_finance_db")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+
+  @@schema("kratom_finance_db")
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+
+  @@schema("kratom_finance_db")
+}
