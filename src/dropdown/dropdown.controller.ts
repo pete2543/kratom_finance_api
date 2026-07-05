@@ -28,4 +28,18 @@ export class DropdownController {
   getNotificationTypes() {
     return this.dropdownService.getNotificationTypes();
   }
+
+  @Get('payment-methods')
+  @ApiOperation({ summary: 'รายการช่องทางชำระเงิน' })
+  @ApiOkResponse({ type: DropdownListResponseDto })
+  getPaymentMethods() {
+    return this.dropdownService.getPaymentMethods();
+  }
+
+  @Get('payment-statuses')
+  @ApiOperation({ summary: 'รายการสถานะการชำระเงิน' })
+  @ApiOkResponse({ type: DropdownListResponseDto })
+  getPaymentStatuses() {
+    return this.dropdownService.getPaymentStatuses();
+  }
 }

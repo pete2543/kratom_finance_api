@@ -242,6 +242,27 @@ model stock_transactions {
   @@schema("kratom_finance_db")
 }
 
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model object_document {
+  id             Int       @id @default(autoincrement())
+  etag           String    @db.VarChar(255)
+  bucket         String?   @db.VarChar(100)
+  folder1        String?   @db.VarChar(100)
+  full_path      String?   @db.VarChar(300)
+  file_name      String    @db.VarChar(255)
+  content_type   String?   @db.VarChar(100)
+  content_size   Decimal?  @db.Decimal(18, 2)
+  file_extention String?   @db.VarChar(255)
+  object_name    String?   @db.VarChar(255)
+  table_name     String?   @db.VarChar(200)
+  table_id       Int?
+  table_id2      String?   @db.Uuid
+  created_date   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_by     String?   @db.Uuid
+
+  @@schema("kratom_finance_db")
+}
+
 enum AccountType {
   CASH
   BANK

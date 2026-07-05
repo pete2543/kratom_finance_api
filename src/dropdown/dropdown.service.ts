@@ -42,6 +42,24 @@ export class DropdownService {
     return this.toDropdownItems(items);
   }
 
+  async getPaymentMethods(): Promise<DropdownItemDto[]> {
+    const items = await this.prisma.payment_methods.findMany({
+      select: { id: true, code: true, label_th: true },
+      orderBy: { id: 'asc' },
+    });
+
+    return this.toDropdownItems(items);
+  }
+
+  async getPaymentStatuses(): Promise<DropdownItemDto[]> {
+    const items = await this.prisma.payment_statuses.findMany({
+      select: { id: true, code: true, label_th: true },
+      orderBy: { id: 'asc' },
+    });
+
+    return this.toDropdownItems(items);
+  }
+
   private toDropdownItems(items: DropdownRow[]): DropdownItemDto[] {
     return items.map(({ id, code, label_th }) => ({
       id,
