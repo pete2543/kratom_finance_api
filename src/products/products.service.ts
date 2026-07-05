@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
+import { SupabaseService } from '../supabase/supabase.service';
 import {
   CreateProductDto,
   PaginatedProductsResponseDto,
@@ -25,7 +26,12 @@ type ProductRow = {
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly productTableName = 'products';
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly supabase: SupabaseService,
+  ) {}
 
   async findAll(query: ProductQueryDto): Promise<PaginatedProductsResponseDto> {
     const page = query.page ?? 1;
@@ -53,9 +59,15 @@ export class ProductsService {
       this.getStockBalanceMap(),
     ]);
 
+    const imageUrls = await this.getImageUrlMap(items.map((item) => item.id));
+
     return {
       items: items.map((item) =>
-        this.toResponse(item, stockBalances.get(item.id) ?? '0'),
+        this.toResponse(
+          item,
+          stockBalances.get(item.id) ?? '0',
+          imageUrls.get(item.id),
+        ),
       ),
       page,
       limit,
@@ -71,9 +83,16 @@ export class ProductsService {
       throw new NotFoundException(`Product ${id} not found`);
     }
 
-    const stockBalances = await this.getStockBalanceMap([id]);
+    const [stockBalances, imageUrls] = await Promise.all([
+      this.getStockBalanceMap([id]),
+      this.getImageUrlMap([id]),
+    ]);
 
-    return this.toResponse(product, stockBalances.get(id) ?? '0');
+    return this.toResponse(
+      product,
+      stockBalances.get(id) ?? '0',
+      imageUrls.get(id),
+    );
   }
 
   async create(dto: CreateProductDto): Promise<ProductResponseDto> {
@@ -108,8 +127,13 @@ export class ProductsService {
     });
 
     const stockBalances = await this.getStockBalanceMap([id]);
+    const imageUrls = await this.getImageUrlMap([id]);
 
-    return this.toResponse(product, stockBalances.get(id) ?? '0');
+    return this.toResponse(
+      product,
+      stockBalances.get(id) ?? '0',
+      imageUrls.get(id),
+    );
   }
 
   async remove(id: number): Promise<{ id: number }> {
@@ -160,6 +184,35 @@ export class ProductsService {
     );
   }
 
+  private async getImageUrlMap(productIds: number[]) {
+    if (productIds.length === 0) {
+      return new Map<number, string>();
+    }
+
+    const docs = await this.prisma.object_document.findMany({
+      where: {
+        table_name: this.productTableName,
+        table_id: { in: productIds },
+      },
+      orderBy: { created_date: 'desc' },
+    });
+
+    const map = new Map<number, string>();
+
+    for (const doc of docs) {
+      if (doc.table_id == null || map.has(doc.table_id)) {
+        continue;
+      }
+
+      map.set(
+        doc.table_id,
+        this.supabase.getPublicUrl(doc.full_path ?? doc.object_name ?? ''),
+      );
+    }
+
+    return map;
+  }
+
   private getSignedQuantity(typeCode: string, quantity: number) {
     const outboundCodes = ['OUT', 'SALE', 'STOCK_OUT'];
     return outboundCodes.includes(typeCode.toUpperCase()) ? -quantity : quantity;
@@ -168,6 +221,7 @@ export class ProductsService {
   private toResponse(
     product: ProductRow,
     stockBalance: string,
+    imageUrl?: string,
   ): ProductResponseDto {
     return {
       id: product.id,
@@ -177,6 +231,7 @@ export class ProductsService {
       unit: product.unit,
       isActive: product.is_active,
       stockBalance,
+      imageUrl: imageUrl ?? null,
       createdAt: product.created_at,
       updatedAt: product.updated_at,
     };

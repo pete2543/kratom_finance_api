@@ -5,6 +5,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { ApiResponseDto } from '../common/dto/api-response.dto';
 import {
+  ObjectDocumentQueryDto,
   ObjectDocumentResponseDto,
   UploadObjectDocumentDto,
 } from './dto/object-document.dto';
@@ -58,6 +60,18 @@ export class ObjectDocumentsController {
     @Body() dto: UploadObjectDocumentDto,
   ) {
     return this.objectDocumentsService.upload(file, dto);
+  }
+
+  @Get('by-reference')
+  @ApiOperation({
+    summary: 'ดึงไฟล์ตาม table_name + table_id (ใช้แสดงรูป product/order)',
+  })
+  @ApiOkResponse({ type: [ObjectDocumentResponseDto] })
+  findByReference(@Query() query: ObjectDocumentQueryDto) {
+    return this.objectDocumentsService.findByReference(
+      query.tableName,
+      query.tableId,
+    );
   }
 
   @Get(':id/signed-url')

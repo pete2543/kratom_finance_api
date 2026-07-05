@@ -3,21 +3,32 @@ import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString } from 'class-validator';
 
 export class UploadObjectDocumentDto {
-  @ApiPropertyOptional({ example: 'orders' })
+  @ApiPropertyOptional({ example: 'products' })
   @IsOptional()
   @IsString()
   folder1?: string;
 
-  @ApiPropertyOptional({ example: 'orders' })
+  @ApiPropertyOptional({ example: 'products' })
   @IsOptional()
   @IsString()
   table_name?: string;
 
-  @ApiPropertyOptional({ example: 1 })
+  @ApiPropertyOptional({ example: 3 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   table_id?: number;
+}
+
+export class ObjectDocumentQueryDto {
+  @ApiProperty({ example: 'products' })
+  @IsString()
+  tableName: string;
+
+  @ApiProperty({ example: 3 })
+  @Type(() => Number)
+  @IsInt()
+  tableId: number;
 }
 
 export class ObjectDocumentResponseDto {

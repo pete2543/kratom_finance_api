@@ -7,6 +7,7 @@ import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import {
+  ObjectDocumentQueryDto,
   ObjectDocumentResponseDto,
   UploadObjectDocumentDto,
 } from './dto/object-document.dto';
@@ -63,6 +64,28 @@ export class ObjectDocumentsService {
         error instanceof Error ? error.message : 'Unknown upload error';
       throw new BadRequestException(`Upload failed: ${message}`);
     }
+  }
+
+  async findByReference(
+    tableName: string,
+    tableId: number,
+  ): Promise<ObjectDocumentResponseDto[]> {
+    const records = await this.prisma.object_document.findMany({
+      where: {
+        table_name: tableName,
+        table_id: tableId,
+      },
+      orderBy: { created_date: 'desc' },
+    });
+
+    return records.map((record) =>
+      this.toResponse(
+        record,
+        this.supabase.getPublicUrl(
+          record.full_path ?? record.object_name ?? '',
+        ),
+      ),
+    );
   }
 
   async findOne(id: number): Promise<ObjectDocumentResponseDto> {

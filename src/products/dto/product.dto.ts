@@ -112,6 +112,9 @@ export class ProductResponseDto {
   @ApiPropertyOptional()
   stockBalance?: string;
 
+  @ApiPropertyOptional({ description: 'รูปสินค้าล่าสุด (จาก object_document)' })
+  imageUrl?: string | null;
+
   @ApiPropertyOptional()
   createdAt?: Date | null;
 
